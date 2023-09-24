@@ -79,7 +79,12 @@ struct State {
     index_buffer: wgpu::Buffer,
     num_indices: u32,
     diffuse_bind_group: wgpu::BindGroup,
+    #[allow(dead_code)]
     diffuse_texture: texture::Texture,
+    diffuse_bind_group_pepe: wgpu::BindGroup,
+    #[allow(dead_code)]
+    diffuse_texture_pepe: texture::Texture,
+    space_pressed: bool,
 }
 
 impl State {
@@ -153,6 +158,10 @@ impl State {
         let diffuse_texture =
             texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
 
+        let diffuse_bytes = include_bytes!("pepe.jpg");
+        let diffuse_texture_pepe =
+            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "pepe.jpg").unwrap();
+
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -191,6 +200,21 @@ impl State {
                 },
             ],
             label: Some("diffuse_bind_group"),
+        });
+
+        let diffuse_bind_group_pepe = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture_pepe.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture_pepe.sampler),
+                },
+            ],
+            label: Some("diffuse_bind_group_pepe"),
         });
 
         let clear_color = wgpu::Color {
@@ -268,6 +292,8 @@ impl State {
 
         let num_indices = INDICES.len() as u32;
 
+        let space_pressed = false;
+
         Self {
             window,
             surface,
@@ -282,6 +308,9 @@ impl State {
             num_indices,
             diffuse_bind_group,
             diffuse_texture,
+            diffuse_bind_group_pepe,
+            diffuse_texture_pepe,
+            space_pressed,
         }
     }
 
@@ -313,12 +342,13 @@ impl State {
             WindowEvent::KeyboardInput {
                 input:
                     KeyboardInput {
+                        state,
                         virtual_keycode: Some(VirtualKeyCode::Space),
                         ..
                     },
                 ..
             } => {
-                //self.use_color = *state == ElementState::Released;
+                self.space_pressed = *state == ElementState::Pressed;
                 tracing::info!("Space pressed");
                 false
             }
@@ -355,7 +385,11 @@ impl State {
 
             // NEW!
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            if self.space_pressed {
+                render_pass.set_bind_group(0, &self.diffuse_bind_group_pepe, &[]);
+            } else {
+                render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            }
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
