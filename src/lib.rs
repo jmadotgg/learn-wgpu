@@ -1,7 +1,10 @@
 mod camera_controller;
+mod model;
+mod resources;
 mod texture;
 use camera_controller::CameraController;
 use cgmath::prelude::*;
+use model::Vertex;
 use wgpu::util::DeviceExt;
 use winit::{
     dpi::PhysicalSize,
@@ -327,9 +330,9 @@ struct State {
     diffuse_bind_group: wgpu::BindGroup,
     #[allow(dead_code)]
     diffuse_texture: texture::Texture,
-    diffuse_bind_group_pepe: wgpu::BindGroup,
+    diffuse_bind_group_ultramad: wgpu::BindGroup,
     #[allow(dead_code)]
-    diffuse_texture_pepe: texture::Texture,
+    diffuse_texture_ultramad: texture::Texture,
     space_pressed: bool,
     camera: Camera,
     camera_uniform: CameraUniform,
@@ -414,7 +417,7 @@ impl State {
             texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
 
         let diffuse_bytes = include_bytes!("ultramad.png");
-        let diffuse_texture_pepe =
+        let diffuse_texture_ultramad =
             texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "ultramad.png").unwrap();
 
         let texture_bind_group_layout =
@@ -457,19 +460,19 @@ impl State {
             label: Some("diffuse_bind_group"),
         });
 
-        let diffuse_bind_group_pepe = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let diffuse_bind_group_ultramad = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &texture_bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture_pepe.view),
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture_ultramad.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture_pepe.sampler),
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture_ultramad.sampler),
                 },
             ],
-            label: Some("diffuse_bind_group_pepe"),
+            label: Some("diffuse_bind_group_ultramad"),
         });
 
         let camera = Camera {
@@ -574,7 +577,7 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[Vertex::desc(), InstanceRaw::desc()],
+                buffers: &[model::ModelVertex::desc(), InstanceRaw::desc()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -655,8 +658,8 @@ impl State {
             num_indices,
             diffuse_bind_group,
             diffuse_texture,
-            diffuse_bind_group_pepe,
-            diffuse_texture_pepe,
+            diffuse_bind_group_ultramad,
+            diffuse_texture_ultramad,
             space_pressed,
             camera,
             camera_uniform,
@@ -786,7 +789,7 @@ impl State {
 
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
             if self.space_pressed {
-                render_pass.set_bind_group(0, &self.diffuse_bind_group_pepe, &[]);
+                render_pass.set_bind_group(0, &self.diffuse_bind_group_ultramad, &[]);
             } else {
                 render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             }
@@ -803,35 +806,6 @@ impl State {
         output.present();
 
         Ok(())
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
-    position: [f32; 3],
-    tex_coords: [f32; 2],
-}
-
-impl Vertex {
-    fn desc() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                // there is a macro for this vertex_attr_array!
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-            ],
-        }
     }
 }
 
