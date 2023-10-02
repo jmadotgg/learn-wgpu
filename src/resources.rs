@@ -1,4 +1,8 @@
-use crate::model;
+use std::io::{BufReader, Cursor};
+
+use wgpu::util::DeviceExt;
+
+use crate::{model, texture};
 
 pub async fn load_string(file_name: &str) -> anyhow::Result<String> {
     let path = std::path::Path::new(env!("OUT_DIR"))
@@ -53,7 +57,7 @@ pub async fn load_model(
 
     let mut materials = Vec::new();
     for m in obj_materials? {
-        let diffuse_texture = load_texture(&m.diffuse_texture, device, queue).await?;
+        let diffuse_texture = load_texture(&m.diffuse_texture.unwrap(), device, queue).await?;
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout,
             entries: &[
