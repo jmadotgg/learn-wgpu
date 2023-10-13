@@ -584,12 +584,12 @@ impl State {
             bytemuck::cast_slice(&[self.camera_uniform]),
         );
 
-        //        for instance in &mut self.instances {
-        //            let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
-        //            let current = instance.rotation;
-        //            // Order important, because matrix mult
-        //            instance.rotation = amount * current;
-        //        }
+        //for instance in &mut self.instances {
+        //    let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
+        //    let current = instance.rotation;
+        //    // Order important, because matrix mult
+        //    instance.rotation = amount * current;
+        //}
         //let instance_data = self
         //    .instances
         //    .iter()
