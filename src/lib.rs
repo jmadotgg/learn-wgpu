@@ -13,7 +13,8 @@ use winit::{
     window::WindowBuilder,
 };
 
-const NUM_INSTANCES_PER_ROW: u32 = 100;
+use crate::model::{DrawLight, DrawModel}; // NEW!
+const NUM_INSTANCES_PER_ROW: u32 = 10;
 const ROTATION_SPEED: f32 = 2.0 * std::f32::consts::PI / 1080.0;
 
 pub async fn run() {
@@ -203,10 +204,6 @@ struct State {
     // unsafe references to the window's resources.
     window: Window,
     render_pipeline: wgpu::RenderPipeline,
-    #[allow(dead_code)]
-    diffuse_texture: texture::Texture,
-    #[allow(dead_code)]
-    diffuse_texture_ultramad: texture::Texture,
     space_pressed: bool,
     camera: Camera,
     camera_uniform: CameraUniform,
@@ -279,6 +276,7 @@ impl State {
             .copied()
             .find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
+
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
@@ -290,14 +288,6 @@ impl State {
         };
 
         surface.configure(&device, &config);
-
-        let diffuse_bytes = include_bytes!("happy-tree.png");
-        let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
-
-        let diffuse_bytes = include_bytes!("ultramad.png");
-        let diffuse_texture_ultramad =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "ultramad.png").unwrap();
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -449,11 +439,6 @@ impl State {
                 .await
                 .unwrap();
 
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
-        });
-
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
@@ -521,8 +506,6 @@ impl State {
             size,
             clear_color,
             render_pipeline,
-            diffuse_texture,
-            diffuse_texture_ultramad,
             space_pressed,
             camera,
             camera_uniform,
@@ -593,6 +576,32 @@ impl State {
     }
 
     fn update(&mut self) {
+        self.camera_controller.update_camera(&mut self.camera);
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera_uniform]),
+        );
+
+        //        for instance in &mut self.instances {
+        //            let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
+        //            let current = instance.rotation;
+        //            // Order important, because matrix mult
+        //            instance.rotation = amount * current;
+        //        }
+        //let instance_data = self
+        //    .instances
+        //    .iter()
+        //    .map(Instance::to_raw)
+        //    .collect::<Vec<_>>();
+
+        //self.queue.write_buffer(
+        //    &self.instance_buffer,
+        //    0,
+        //    bytemuck::cast_slice(&instance_data),
+        //);
+
         // Update the light
         let old_position: cgmath::Vector3<_> = self.light_uniform.position.into();
         self.light_uniform.position =
@@ -603,33 +612,6 @@ impl State {
             &self.light_buffer,
             0,
             bytemuck::cast_slice(&[self.light_uniform]),
-        );
-
-        self.camera_controller.update_camera(&mut self.camera);
-        self.camera_uniform.update_view_proj(&self.camera);
-        self.queue.write_buffer(
-            &self.camera_buffer,
-            0,
-            bytemuck::cast_slice(&[self.camera_uniform]),
-        );
-
-        for instance in &mut self.instances {
-            let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
-            let current = instance.rotation;
-            // Order important, because matrix mult
-            instance.rotation = amount * current;
-        }
-
-        let instance_data = self
-            .instances
-            .iter()
-            .map(Instance::to_raw)
-            .collect::<Vec<_>>();
-
-        self.queue.write_buffer(
-            &self.instance_buffer,
-            0,
-            bytemuck::cast_slice(&instance_data),
         );
     }
 
@@ -666,8 +648,6 @@ impl State {
             });
 
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-
-            use crate::model::DrawLight; // NEW!
             render_pass.set_pipeline(&self.light_render_pipeline); // NEW!
             render_pass.draw_light_model(
                 &self.obj_model,
@@ -675,7 +655,6 @@ impl State {
                 &self.light_bind_group,
             ); // NEW!
 
-            use crate::model::DrawModel;
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.draw_model_instanced(
                 &self.obj_model,
